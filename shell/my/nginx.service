@@ -1,0 +1,57 @@
+#!/bin/bash
+[ -f /etc/init.d/functions   ] && . /etc/init.d/functions
+
+te=$1
+test(){
+     if [ $? -eq 0 ];then
+        action "Nginx $te is" /bin/true
+     else
+        action "Nginx $te is" /bin/false 
+     fi
+}
+
+
+start(){
+     /usr/sbin/nginx &>/dev/null
+}
+stop(){
+     /usr/sbin/nginx -s stop &>/dev/null
+}
+restart(){
+       stop
+       sleep 2
+       start
+}
+reload(){
+   /usr/sbin/nginx -s reload &>/dev/null
+}
+status(){
+     echo "当前nginx监听端口: `netstat -lntup|grep [n]ginx|awk '{print $4}'`"
+     echo "当前nginxPID为: `ps aux|grep [n]ginx|grep master|awk '{print $2}'`"
+}
+
+case $1 in 
+    start)
+          start
+          test
+            ;;
+     stop)
+           stop
+           test
+             ;;
+      restart)
+            restart
+            test
+            ;;
+       reload)
+            reload
+            test
+             ;;
+        status)
+             status
+              test
+              ;;
+            *) 
+              echo "USAGE $0 [start|stop|restart|reload|status]"
+
+esac

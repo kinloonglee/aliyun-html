@@ -1,0 +1,24 @@
+wget --no-check-certificate  https://pypi.python.org/packages/source/s/setuptools/setuptools-19.6.tar.gz#md5=c607dd118eae682c44ed146367a17e26
+tar -zxvf setuptools-19.6.tar.gz
+cd setuptools-19.6
+python setup.py build
+python setup.py install
+
+curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+python get-pip.py
+
+
+
+linux服务器
+yum install -y python-pip
+
+
+
+配置pip.conf
+
+vim  ~/.pip/pip.conf
+[global]
+index-url = http://pypi.douban.com/simple #豆瓣源，可以换成其他的源
+trusted-host = pypi.douban.com #添加豆瓣源为可信主机，要不然可能报错
+disable-pip-version-check = true #取消pip版本检查，排除每次都报最新的pip
+timeout = 120

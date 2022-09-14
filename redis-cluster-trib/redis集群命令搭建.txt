@@ -1,0 +1,100 @@
+ 
+ 
+yum install ruby -y
+wget http://rubygems.org/downloads/redis-3.3.0.gem
+gem install redis-3.3.0.gem 
+
+
+echo never > /sys/kernel/mm/transparent_hugepage/enabled
+echo "vm.overcommit_memory = 1" >> /etc/sysctl.conf
+echo 511 > /proc/sys/net/core/somaxconn
+sysctl -p
+
+wget http://download.redis.io/releases/redis-4.0.11.tar.gz
+#http://download.redis.io/releases/    下载链接 
+
+tar xf redis-4.0.11.tar.gz 
+cd redis-4.0.11/
+make 
+gem list -- check redis gem
+
+cp src/redis-trib.rb  /usr/local/bin
+cp /root/redis-4.0.11/src/redis-server  /usr/local/bin
+cp /root/redis-4.0.11/src/redis-cli    /usr/local/bin
+
+mkdir /root/redis-4.0.11/config
+mkdir /root/redis-4.0.11/data
+cd /root/redis-4.0.11/config
+
+上传文件夹下配置文件
+sed -i s#/root/redis-5.0.7/data#/root/redis-4.0.11/data#g  *   修改一下data目录 
+
+
+全部启动
+
+redis-server redis-7000.conf
+redis-server redis-7001.conf
+redis-server redis-7002.conf
+redis-server redis-7003.conf
+redis-server redis-7004.conf
+redis-server redis-7005.conf
+
+>>> Creating cluster
+[ERR] Sorry, can't connect to node 10.0.0.14:7000
+解决:因为有密码.集群无法连接.添加密码
+ find / -name client.rb
+ sed -i "s#password => nil#password => "620620"#g" /usr/local/share/gems/gems/redis-3.3.0/lib/redis/client.rb
+ 将password密码修改为正确的:
+ 
+
+redis-trib.rb create --replicas 1  10.0.0.14:7000 10.0.0.14:7001 10.0.0.14:7002 10.0.0.14:7003 10.0.0.14:7004 10.0.0.14:7005
+
+redis-cli -a 620620 -c -h 10.0.0.14 -p 7000
+
+
+添加删除主从节点
+https://www.jianshu.com/p/21f67bd739cc
+
+
+从集群中删除节点 (从节点,主节点没有试过,不要删)
+ 从节点ip:port  id
+redis-trib.rb del-node 192.168.66.2:7000 d5f6d1d17426bd564a6e309f32d0f5b96962fe53 
+
+ 增加从节点的时候指定主节点。
+                                              主节点id                                  从节点ip:port    任意一个主节点,可以不是前面的主节点
+./redis-trib.rb add-node --slave --master-id 890d2c8d989cce50e5fa48e37cd35738887f3f7d  192.168.66.3:7008  192.168.66.2:7000
+
+
+
+添加一个主节点
+./redis-trib.rb add-node 192.168.66.3:7006 192.168.66.2:7000
+
+# 添加成功，但是并没有指定 slot ,所以必须 迁移slot节点
+./redis-trib.rb reshard 192.168.66.2:7000
+
+# 提示一 ：How many slots do you want to move (from 1 to 16384)?
+为了平衡每个master管理的slot的个数，所以输入 16384/master  的数量。如这里为4 那么就是 16384/4 = 4096个。
+输入 4096
+
+# 提示二：What is the receiving node ID?(接受的node ID是多少)
+            890d2c8d989cce50e5fa48e37cd35738887f3f7d # 7006的ID
+
+# 提示三： Please enter all the source node IDs.
+           Type 'all' to use all the nodes as source nodes for the hash slots.
+           Type 'done' once you entered all the source nodes IDs.
+                  （要从哪个节点中获取lost ？）
+不打算从特定的节点上取出指定数量的哈希槽， 那么可以输入 all
+否则输入某个节点的 node ID 
+# 检查是否成功
+./redis-trib.rb check 192.168.66.2:7000
+ 
+ 
+ 
+ redis5以后的版本请看
+ https://www.cnblogs.com/mythdoraemon/p/10092425.html
+ 
+ 前面 不用装ruby,后面集群命令直接一条搞 定
+ /usr/redis-5.0.2/src/redis-cli -a **** --cluster create --cluster-replicas 1  192.168.31.128:8001 192.168.31.128:8002 192.168.31.128:8003 192.168.31.128:8004  192.168.31.128:8005 192.168.31.128:8006 代表为每个创建的主服务器节点创建一个从服务器 节点
+
+
+  

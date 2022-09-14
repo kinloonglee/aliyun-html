@@ -1,0 +1,139 @@
+
+#配置网卡转发,看值 是否为1
+sysctl -a |grep -w net.ipv4.ip_forward
+net.ipv4.ip_forward=1
+
+## 若未配置,需要执行如下命令
+cat <<EOF>/etc/sysctl.d/docker.conf
+net.ipv4.ip_forward=1
+net.bridge.bridge-nf-call-iptables=1
+net.bridge.bridge-nf-call-ip6tables=1
+EOF
+
+#使配置生效
+sysctl -p /etc/sysctl.d/docker.conf
+
+
+centos安装docker和docker-compose
+## 2.1 安装依赖包
+yum install -y yum-utils device-mapper-persistent-data lvm2
+yum install -y docker-ce   #直接安装的最新版本
+
+
+
+### 2.2 安装指定的版本docker-ce
+1....怎么安装固定版本:
+yum list docker-ce.x86_64 --showduplicates |sort -r
+举例:
+docker-ce.x86_64            18.06.0.ce-3.el7                    docker-ce-stable
+docker-ce.x86_64            18.03.1.ce-1.el7.centos             docker-ce-stable
+
+docker-ce-17.03.2.ce-1.e17.centos.x86_64   由 docker-ce-   18.06.3.ce-3.el7.centos  .x86_64
+                                              前半部分加-        加中间全部                加后半部分
+
+yum install -y --setopt=obsoletes=0 docker-ce-17.03.3.ce-1.el7.x86_64
+yum install docker-ce-18.06.3.ce-3.el7.x86_64
+
+2....新的版本安装方法,harbor可能对版本要求高:
+yum install docker-ce-18.03.0.ce
+
+
+镜像列表
+https://download.docker.com/linux/centos/7/x86_64/stable/Packages/
+3.....直接找到镜像yum
+yum -y install https://mirrors.aliyun.com/docker-ce/linux/centos/7/x86_64/stable/Packages/docker-ce-18.06.3.ce-3.el7.x86_64.rpm
+
+
+
+
+
+安装docker-compose
+curl -L https://mirrors.aliyun.com/docker-toolbox/linux/compose/1.21.2/docker-compose-Linux-x86_64 -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+# docker-compose --version
+
+
+
+
+
+优化加速
+curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s https://uylcuei3.mirror.aliyuncs.com
+#curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://b7a9017d.m.daocloud.io
+将桥接的IPv4流量传递到iptables的链：
+$ cat > /etc/sysctl.d/k8s.conf << EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+$ sysctl -p  # 生效
+
+
+
+
+vi /etc/docker/daemon.json
+{
+        "registry-mirrors": ["https://uoggbpok.mirror.aliyuncs.com"],
+        "insecure-registries": ["10.0.0.100:5000","10.0.0.100"],
+        "live-restore": true   #daemon进程停止,容器不停止
+}
+
+
+ 设置docker启动参数（可选）
+    #  graph: 设置docker数据目录：选择比较大的分区（我这里是根目录就不需要配置了，默认为/var/lib/docker）
+    #  exec-opts: 设置cgroup driver（默认是cgroupfs，不推荐设置systemd）
+    #  insecure-registries：设置私有仓库
+ 
+cat > /etc/docker/daemon.json <<EOF
+{
+       "graph": "/data/docker",
+       "exec-opts": ["native.cgroupdriver=cgroupfs"],
+       "insecure-registries": ["http://192.168.101.11"]
+}
+EOF
+ 
+ # 启动docker服务并加入开机启动项
+  systemctl start docker && systemctl enable docker
+
+
+
+
+-------------------------_______-------------------
+
+ubuntu 安装docker
+https://www.cnblogs.com/ziyue7575/p/13898500.html
+
+
+1. apt update
+
+2.设置安装包以允许APT在HTTPS上使用存储库
+sudo apt-get install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    software-properties-common
+
+3.添加Docker的GPG密钥
+curl -fsSL https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg | sudo apt-key add -
+
+4.添加仓库
+$(lsb_release -cs) 得到codename  替换下面的focal
+sudo echo "deb https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu focal stable" > /etc/apt/sources.list.d/docker.list
+5.查看可安装的docker版本包
+apt update
+apt-cache madison docker-ce
+
+6.安装
+sudo apt-get install docker-ce=18.03.0~ce-0~ubuntu
+
+7.验证
+8.替换默认仓库
+sudo curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://f1361db2.m.daocloud.io
+sudo systemctl restart docker.service
+
+9.每次命令都要sudo,很麻烦,直接创建docker用户,或者将当前用户设置上docker权限就方便多了
+
+sudo groupadd docker  ##添加名为docker的用户组(现在貌似安装的时候就会创建上)
+sudo gpasswd -a ${用户} docker  ##若是docker存在,添加用户  例如sudo gpasswd -a jkxy docker
+sudo service docker restart  ##重启docker服务
+# 然后需要重启Ubuntu环境
+# sudo reboot
+9.

@@ -1,0 +1,18 @@
+docker run -itd --name nginx nginx
+docker ps 取得nginx的名字
+然后
+cd /home/nginx/conf
+docker cp nginx:/etc/nginx/nginx.conf  .
+cd  /home/nginx
+docker cp -a nginx:/etc/nginx/conf.d  .
+
+docker run \
+--name qingcloud-nginx \
+-p 80:80 \
+-p 443:443 \
+--restart=always \
+-v /app/nginx/html:/usr/share/nginx/html \
+-v /app/nginx/conf/nginx.conf:/etc/nginx/nginx.conf \
+-v /app/nginx/logs:/var/log/nginx \
+-v /app/nginx/conf.d:/etc/nginx/conf.d \
+-d docker.io/nginx
